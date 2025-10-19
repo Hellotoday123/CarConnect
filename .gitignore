@@ -1,0 +1,28 @@
+# --- CarConnect Monorepo Git Ignore ---
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+dist/
+build/
+.cache/
+.vite/
+.next/
+out/
+
+# Env & secrets
+.env
+.env.*
+*.local
+firebaseServiceAccount.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp

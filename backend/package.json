@@ -1,0 +1,23 @@
+{
+  "name": "carconnect-backend",
+  "version": "1.0.0",
+  "description": "CarConnect backend server using Express and Firebase Admin SDK",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^4.19.2",
+    "firebase-admin": "^13.5.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
