@@ -10,8 +10,8 @@ import Account from "./pages/Account.jsx";
 import BuyerHome from "./pages/BuyerHome.jsx";
 import SellerHome from "./pages/SellerHome.jsx";
 import CarDetails from "./pages/CarDetails.jsx";
-import Inventory from "./pages/Inventory.jsx";   // ✅ only this stays
-
+import Inventory from "./pages/Inventory.jsx";
+import Wishlist from "./pages/WishList.jsx";
 // layout
 import Navbar from "./components/Navbar.jsx";
 import ProtectedRoute from "./routes/ProtectedRoute.jsx";
@@ -34,8 +34,9 @@ export default function App() {
           <Route path="/account" element={<Account />} />
           <Route path="/buyer" element={<BuyerHome />} />
           <Route path="/seller" element={<SellerHome />} />
-          <Route path="/seller/inventory" element={<Inventory />} /> {/* ✅ new inventory */}
+          <Route path="/seller/inventory" element={<Inventory />} />
           <Route path="/cars/:id" element={<CarDetails />} />
+          <Route path="/wishlist" element={<Wishlist />} /> {/* 👈 NEW */}
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />

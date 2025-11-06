@@ -24,14 +24,18 @@ export default function Navbar() {
   // Close dropdown on outside click
   useEffect(() => {
     const handleClick = (e) => {
-      if (open && menuRef.current && !menuRef.current.contains(e.target)) setOpen(false);
+      if (open && menuRef.current && !menuRef.current.contains(e.target)) {
+        setOpen(false);
+      }
     };
     window.addEventListener("click", handleClick);
     return () => window.removeEventListener("click", handleClick);
   }, [open]);
 
   // Close dropdown on route change
-  useEffect(() => { setOpen(false); }, [loc.pathname]);
+  useEffect(() => {
+    setOpen(false);
+  }, [loc.pathname]);
 
   const logout = async () => {
     await signOut(auth);
@@ -51,15 +55,29 @@ export default function Navbar() {
       </div>
 
       <div className="links">
+        {/* Home link per role */}
         {role === "buyer" && <Link to="/buyer" className="nav-link">Home</Link>}
         {role === "seller" && <Link to="/seller" className="nav-link">Home</Link>}
+
+        {/* 👇 Wishlist visible for both buyers and sellers */}
+        {role && (
+          <Link to="/wishlist" className="nav-link">
+            Wishlist
+          </Link>
+        )}
+
+        {/* Account link for all logged-in users */}
         {role && <Link to="/account" className="nav-link">Account</Link>}
 
+        {/* Seller-only dropdown */}
         {role === "seller" && (
           <div className="nav-dropdown" ref={menuRef}>
             <button
               className="nav-icon"
-              onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen((v) => !v);
+              }}
               aria-haspopup="menu"
               aria-expanded={open}
             >
@@ -68,16 +86,24 @@ export default function Navbar() {
 
             {open && (
               <div className="nav-menu" role="menu">
-                {/* ✅ My Cars → Inventory page */}
-                <button className="nav-menu-item" onClick={() => nav("/seller/inventory")}>
+                <button
+                  className="nav-menu-item"
+                  onClick={() => nav("/seller/inventory")}
+                >
                   My Cars
                 </button>
 
-                <button className="nav-menu-item" onClick={() => nav("/sales")}>
+                <button
+                  className="nav-menu-item"
+                  onClick={() => nav("/sales")}
+                >
                   Sales
                 </button>
 
-                <button className="nav-menu-item" onClick={() => nav("/requests")}>
+                <button
+                  className="nav-menu-item"
+                  onClick={() => nav("/requests")}
+                >
                   Requests
                 </button>
               </div>
@@ -85,10 +111,15 @@ export default function Navbar() {
           </div>
         )}
 
+        {/* Auth buttons */}
         {role ? (
-          <button className="nav-link" onClick={logout}>Logout</button>
+          <button className="nav-link" onClick={logout}>
+            Logout
+          </button>
         ) : (
-          <Link to="/login" className="nav-link">Login</Link>
+          <Link to="/login" className="nav-link">
+            Login
+          </Link>
         )}
       </div>
     </nav>
