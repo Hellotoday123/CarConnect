@@ -304,7 +304,17 @@ body { margin: 0; font-family: system-ui, Arial, sans-serif; background:#0f172a;
   color: white;
 }
 
-
+.inventory-toggle-btn {
+  flex: 0 0 auto;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  background: #182235;
+  color: #e1e5f0;
+}
 
 
 /* Car details */

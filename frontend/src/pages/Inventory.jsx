@@ -38,6 +38,7 @@ export default function Inventory() {
     condition: "",
     active: true,
     images: [], // existing images from DB
+    stockQty: "", // how many in stock
   });
 
   // track login
@@ -114,6 +115,7 @@ export default function Inventory() {
       condition: "",
       active: true,
       images: [],
+      stockQty: "",
     });
     setNewImages([]);
   };
@@ -187,6 +189,10 @@ export default function Inventory() {
       condition: car.condition || "",
       active: car.active !== false,
       images: car.images || [],
+      stockQty:
+        car.stockQty !== undefined && car.stockQty !== null
+          ? String(car.stockQty)
+          : "",
     });
     setNewImages([]); // new images for this edit session start empty
     setShowForm(true);
@@ -251,6 +257,7 @@ export default function Inventory() {
             : form.mileage !== "" ? Number(form.mileage) : null,
         condition: form.condition || "",
         images: imagesToSave,
+        stockQty: form.stockQty !== "" ? Number(form.stockQty) : null,
         sellerUid: uid,
         sellerId: uid,
         contact: {
@@ -299,235 +306,286 @@ export default function Inventory() {
     setCars((prev) => prev.filter((c) => c.id !== id));
   };
 
+  // 🔁 Activate / Deactivate listing
+  const toggleActive = async (car) => {
+    const newActive = car.active === false ? true : false;
+    try {
+      await updateDoc(doc(db, "cars", car.id), {
+        active: newActive,
+        updatedAt: serverTimestamp(),
+      });
+
+      setCars((prev) =>
+        prev.map((c) =>
+          c.id === car.id ? { ...c, active: newActive } : c
+        )
+      );
+    } catch (err) {
+      console.error("toggleActive error:", err);
+      alert("Failed to update listing status.");
+    }
+  };
+
   // preview shows existing images first, then new ones
   const previewImages = [...(form.images || []), ...newImages];
 
   return (
-  <div className="inventory-wrap">
-    <div className="inventory-topbar">
-      <h2 className="inventory-title">Inventory</h2>
-      <button className="inventory-add-btn" onClick={startAdd}>
-        Add Car
-      </button>
-    </div>
+    <div className="inventory-wrap">
+      <div className="inventory-topbar">
+        <h2 className="inventory-title">Inventory</h2>
+        <button className="inventory-add-btn" onClick={startAdd}>
+          Add Car
+        </button>
+      </div>
 
-    {showForm && (
-      <form className="inventory-form" onSubmit={saveCar}>
-        <label>
-          Name
-          <input name="name" value={form.name} onChange={onChange} />
-        </label>
-        <label>
-          Make
-          <input
-            name="make"
-            value={form.make}
-            onChange={onChange}
-            required
-          />
-        </label>
-        <label>
-          Model
-          <input
-            name="model"
-            value={form.model}
-            onChange={onChange}
-            required
-          />
-        </label>
-        <label>
-          Year
-          <input
-            type="number"
-            name="year"
-            value={form.year}
-            onChange={onChange}
-            required
-          />
-        </label>
-        <label>
-          Price
-          <input
-            type="number"
-            name="price"
-            value={form.price}
-            onChange={onChange}
-            required
-          />
-        </label>
+      {showForm && (
+        <form className="inventory-form" onSubmit={saveCar}>
+          <label>
+            Name
+            <input name="name" value={form.name} onChange={onChange} />
+          </label>
+          <label>
+            Make
+            <input
+              name="make"
+              value={form.make}
+              onChange={onChange}
+              required
+            />
+          </label>
+          <label>
+            Model
+            <input
+              name="model"
+              value={form.model}
+              onChange={onChange}
+              required
+            />
+          </label>
+          <label>
+            Year
+            <input
+              type="number"
+              name="year"
+              value={form.year}
+              onChange={onChange}
+              required
+            />
+          </label>
+          <label>
+            Price
+            <input
+              type="number"
+              name="price"
+              value={form.price}
+              onChange={onChange}
+              required
+            />
+          </label>
 
-        <label>
-          Condition
-          <select
-            name="condition"
-            value={form.condition}
-            onChange={onChange}
-            required
-          >
-            <option value="">Select condition</option>
-            <option value="new">New</option>
-            <option value="used">Used</option>
-          </select>
-        </label>
+          <label>
+            Condition
+            <select
+              name="condition"
+              value={form.condition}
+              onChange={onChange}
+              required
+            >
+              <option value="">Select condition</option>
+              <option value="new">New</option>
+              <option value="used">Used</option>
+            </select>
+          </label>
 
-        <label>
-          Mileage
-          <input
-            type="number"
-            name="mileage"
-            value={form.mileage}
-            onChange={onChange}
-            disabled={form.condition === "new"}
-          />
-        </label>
+          <label>
+            Mileage
+            <input
+              type="number"
+              name="mileage"
+              value={form.mileage}
+              onChange={onChange}
+              disabled={form.condition === "new"}
+            />
+          </label>
 
-        <label>
-          Description
-          <textarea
-            name="description"
-            value={form.description}
-            onChange={onChange}
-          />
-        </label>
+          {/* Stock quantity textbox */}
+          <label>
+            Stock Quantity
+            <input
+              type="number"
+              name="stockQty"
+              min="0"
+              value={form.stockQty}
+              onChange={onChange}
+            />
+          </label>
 
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            name="active"
-            checked={!!form.active}
-            onChange={onChange}
-          />
-          Active
-        </label>
+          <label>
+            Description
+            <textarea
+              name="description"
+              value={form.description}
+              onChange={onChange}
+            />
+          </label>
 
-        <label>
-          Photos
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={onMediaChange}
-          />
-          <span className="hint">
-            (For this demo, photos are stored directly in Firestore. Use small
-            images.)
-          </span>
-        </label>
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              name="active"
+              checked={!!form.active}
+              onChange={onChange}
+            />
+            Active
+          </label>
 
-        {previewImages.length > 0 && (
-          <div className="image-preview-wrap">
-            {previewImages.map((src, idx) => (
-              <div key={idx} className="image-thumb">
-                <img src={src} alt={`Preview ${idx}`} />
-                <button
-                  type="button"
-                  className="image-remove-btn"
-                  onClick={() => handleRemoveImage(idx)}
-                  title="Remove image"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+          <label>
+            Photos
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={onMediaChange}
+            />
+            <span className="hint">
+              (For this demo, photos are stored directly in Firestore. Use small
+              images.)
+            </span>
+          </label>
 
-        <div className="inventory-form-actions">
-          <button type="submit" disabled={saving}>
-            {saving ? "Saving..." : editingId ? "Save Changes" : "Create"}
-          </button>
-          <button type="button" onClick={cancelForm} disabled={saving}>
-            Cancel
-          </button>
-        </div>
-      </form>
-    )}
-
-    {loading && <p style={{ marginTop: 24 }}>Loading...</p>}
-    {!loading && cars.length === 0 && (
-      <p style={{ marginTop: 24 }}>No cars in inventory.</p>
-    )}
-
-    {!loading && cars.length > 0 && (
-      <div className="inventory-grid">
-        {cars.map((c) => {
-          const firstImage = c.images?.[0] || null;
-          const title =
-            c.name ||
-            `${c.year ?? ""} ${c.make ?? ""} ${c.model ?? ""}`.trim();
-
-          const line1Parts = [
-            c.make,
-            c.model,
-            c.year ? String(c.year) : null,
-            c.price ? `$${c.price}` : null,
-          ].filter(Boolean);
-
-          const line2Parts = [
-            c.condition
-              ? c.condition === "new"
-                ? "• new"
-                : "• used"
-              : null,
-            (c.mileage ?? c.milleage)
-              ? `• ${(c.mileage ?? c.milleage)} km`
-              : null,
-          ].filter(Boolean);
-
-          return (
-            <div key={c.id} className="inventory-card">
-              <div className="inventory-card-media">
-                {firstImage ? (
-                  <img src={firstImage} alt={title} />
-                ) : (
-                  <div className="inventory-card-media-placeholder">
-                    No photo
-                  </div>
-                )}
-              </div>
-
-              <div className="inventory-card-body">
-                <h3 className="inventory-card-title">{title}</h3>
-
-                <p className="inventory-card-meta">
-                  {line1Parts.join(" • ")}
-                </p>
-
-                {line2Parts.length > 0 && (
-                  <p className="inventory-card-meta">
-                    {line2Parts.join(" ")}
-                  </p>
-                )}
-
-                {c.images?.length > 0 && (
-                  <p className="inventory-card-photos">
-                    {c.images.length} photo(s)
-                  </p>
-                )}
-
-                <div className="inventory-card-actions">
+          {previewImages.length > 0 && (
+            <div className="image-preview-wrap">
+              {previewImages.map((src, idx) => (
+                <div key={idx} className="image-thumb">
+                  <img src={src} alt={`Preview ${idx}`} />
                   <button
                     type="button"
-                    className="inventory-edit-btn"
-                    onClick={() => startEdit(c)}
+                    className="image-remove-btn"
+                    onClick={() => handleRemoveImage(idx)}
+                    title="Remove image"
                   >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="inventory-remove-btn"
-                    onClick={() => removeCar(c.id)}
-                  >
-                    Remove
+                    ×
                   </button>
                 </div>
-              </div>
+              ))}
             </div>
-          );
-        })}
-      </div>
-    )}
-  </div>
-);
+          )}
 
+          <div className="inventory-form-actions">
+            <button type="submit" disabled={saving}>
+              {saving ? "Saving..." : editingId ? "Save Changes" : "Create"}
+            </button>
+            <button type="button" onClick={cancelForm} disabled={saving}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      {loading && <p style={{ marginTop: 24 }}>Loading...</p>}
+      {!loading && cars.length === 0 && (
+        <p style={{ marginTop: 24 }}>No cars in inventory.</p>
+      )}
+
+      {!loading && cars.length > 0 && (
+        <div className="inventory-grid">
+          {cars.map((c) => {
+            const firstImage = c.images?.[0] || null;
+            const title =
+              c.name ||
+              `${c.year ?? ""} ${c.make ?? ""} ${c.model ?? ""}`.trim();
+
+            const line1Parts = [
+              c.make,
+              c.model,
+              c.year ? String(c.year) : null,
+              c.price ? `$${c.price}` : null,
+            ].filter(Boolean);
+
+            // just condition + mileage
+            const line2Parts = [
+              c.condition
+                ? c.condition === "new"
+                  ? "• new"
+                  : "• used"
+                : null,
+              (c.mileage ?? c.milleage)
+                ? `• ${(c.mileage ?? c.milleage)} km`
+                : null,
+            ].filter(Boolean);
+
+            const hasStock =
+              c.stockQty !== undefined && c.stockQty !== null;
+
+            return (
+              <div key={c.id} className="inventory-card">
+                <div className="inventory-card-media">
+                  {firstImage ? (
+                    <img src={firstImage} alt={title} />
+                  ) : (
+                    <div className="inventory-card-media-placeholder">
+                      No photo
+                    </div>
+                  )}
+                </div>
+
+                <div className="inventory-card-body">
+                  <h3 className="inventory-card-title">{title}</h3>
+
+                  <p className="inventory-card-meta">
+                    {line1Parts.join(" • ")}
+                  </p>
+
+                  {line2Parts.length > 0 && (
+                    <p className="inventory-card-meta">
+                      {line2Parts.join(" ")}
+                    </p>
+                  )}
+
+                  {c.images?.length > 0 && (
+                    <p className="inventory-card-photos">
+                      {c.images.length} photo(s)
+                    </p>
+                  )}
+
+                  {/* footer row: buttons + stock + active toggle */}
+                  <div className="inventory-card-footer">
+                    <div className="inventory-card-actions">
+                      <button
+                        type="button"
+                        className="inventory-edit-btn"
+                        onClick={() => startEdit(c)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="inventory-remove-btn"
+                        onClick={() => removeCar(c.id)}
+                      >
+                        Remove
+                      </button>
+                      <button
+                        type="button"
+                        className="inventory-toggle-btn"
+                        onClick={() => toggleActive(c)}
+                      >
+                        {c.active === false ? "Activate" : "Deactivate"}
+                      </button>
+                    </div>
+
+                    {hasStock && (
+                      <span className="inventory-card-stock">
+                        Stock: {c.stockQty}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
