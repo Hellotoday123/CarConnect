@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { auth, db } from "../services/firebase";
 import {
   doc,
@@ -15,11 +15,20 @@ import "../style.css";
 
 export default function CarDetails() {
   const { id } = useParams();
+  const navigate = useNavigate();
+
   const [car, setCar] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const [wishLoading, setWishLoading] = useState(false);
   const [wishAdded, setWishAdded] = useState(false);
+
+  // test drive booking state
+  const [bookingDateTime, setBookingDateTime] = useState("");
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingMsg, setBookingMsg] = useState("");
+  const [bookingError, setBookingError] = useState("");
+  const [showBookingForm, setShowBookingForm] = useState(false);
 
   // index of currently shown image
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -40,7 +49,7 @@ export default function CarDetails() {
     })();
   }, [id]);
 
-  // check if this car is already in the user's wishlist
+  // check if this car is already in the user's wishlist (using top-level "wishlists" collection)
   useEffect(() => {
     const user = auth.currentUser;
     if (!user || !car) return;
@@ -48,12 +57,13 @@ export default function CarDetails() {
     (async () => {
       try {
         const qRef = query(
-          collection(db, "users", user.uid, "wishlist"),
+          collection(db, "wishlists"),
+          where("buyerId", "==", user.uid),
           where("carId", "==", car.id)
         );
         const snap = await getDocs(qRef);
         if (!snap.empty) {
-          setWishAdded(true); // keep the "Added to wishlist ✓" state
+          setWishAdded(true);
         } else {
           setWishAdded(false);
         }
@@ -93,9 +103,7 @@ export default function CarDetails() {
     "https://via.placeholder.com/1200x800?text=No+Image";
 
   const img =
-    images.length > 0
-      ? images[currentIndex % images.length]
-      : fallbackImg;
+    images.length > 0 ? images[currentIndex % images.length] : fallbackImg;
 
   const fmtMoney = (n) =>
     typeof n === "number"
@@ -117,7 +125,8 @@ export default function CarDetails() {
     try {
       // check again to avoid duplicates
       const qRef = query(
-        collection(db, "users", user.uid, "wishlist"),
+        collection(db, "wishlists"),
+        where("buyerId", "==", user.uid),
         where("carId", "==", car.id)
       );
       const existing = await getDocs(qRef);
@@ -126,7 +135,8 @@ export default function CarDetails() {
         return;
       }
 
-      await addDoc(collection(db, "users", user.uid, "wishlist"), {
+      await addDoc(collection(db, "wishlists"), {
+        buyerId: user.uid,
         carId: car.id,
         title,
         price: car.price ?? null,
@@ -154,10 +164,73 @@ export default function CarDetails() {
     );
   };
 
+  const handleBuyNow = () => {
+    if (!auth.currentUser) {
+      alert("Please sign in as a buyer to purchase this car.");
+      return;
+    }
+    navigate(`/checkout/${car.id}`);
+  };
+
+  const handleBookTestDrive = async () => {
+    setBookingError("");
+    setBookingMsg("");
+
+    const user = auth.currentUser;
+    if (!user) {
+      setBookingError("Please sign in as a buyer to book a test drive.");
+      return;
+    }
+
+    if (!bookingDateTime) {
+      setBookingError("Please choose a date and time.");
+      return;
+    }
+
+    try {
+      setBookingLoading(true);
+
+      // create test drive document
+      const testDriveRef = await addDoc(collection(db, "testDrives"), {
+        buyerId: user.uid,
+        buyerEmail: user.email || null,
+        sellerId: car.sellerId || null,
+        carId: car.id,
+        carName: title,
+        dateTime: bookingDateTime,
+        status: "pending",
+        requestedAt: serverTimestamp(),
+      });
+
+      // create notification for seller
+      if (car.sellerId) {
+        await addDoc(collection(db, "notifications"), {
+          sellerId: car.sellerId,
+          type: "testDrive",
+          testDriveId: testDriveRef.id,
+          message: `New test drive request for ${title}`,
+          createdAt: serverTimestamp(),
+          read: false,
+        });
+      }
+
+      setBookingMsg("Test drive requested! The seller will respond soon.");
+      setBookingDateTime("");
+    } catch (err) {
+      console.error("Book test drive error:", err);
+      setBookingError(err.message || "Failed to book test drive. Please try again.");
+    } finally {
+      setBookingLoading(false);
+    }
+  };
+
+  const isSold = car.sold === true;
+  const isAvailable = car.active !== false && !isSold;
+
   return (
     <div className="details-wrap">
       <div className="details-grid">
-        {/* LEFT: image + contact */}
+        {/* LEFT: image + book test drive + contact */}
         <div className="details-media">
           <div className="details-photo">
             <img src={img} alt={title} />
@@ -185,6 +258,72 @@ export default function CarDetails() {
             )}
           </div>
 
+          {/* Book Test Drive box (now on the left, above contact) */}
+          <div className="testdrive-box" style={{ marginTop: 16 }}>
+            <div className="testdrive-title">Test Drive</div>
+
+            {!showBookingForm ? (
+              <button
+                className="testdrive-btn"
+                type="button"
+                onClick={() => {
+                  setBookingError("");
+                  setBookingMsg("");
+                  setShowBookingForm(true);
+                }}
+                disabled={!isAvailable}
+              >
+                Book Test Drive
+              </button>
+            ) : (
+              <>
+                <label className="testdrive-label">
+                  Select Date &amp; Time
+                  <input
+                    type="datetime-local"
+                    value={bookingDateTime}
+                    onChange={(e) => setBookingDateTime(e.target.value)}
+                    className="testdrive-input"
+                  />
+                </label>
+
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    className="testdrive-btn"
+                    type="button"
+                    onClick={handleBookTestDrive}
+                    disabled={bookingLoading || !isAvailable}
+                  >
+                    {bookingLoading ? "Booking..." : "Confirm Booking"}
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost-btn small"
+                    onClick={() => {
+                      setShowBookingForm(false);
+                      setBookingError("");
+                      setBookingMsg("");
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                {bookingError && (
+                  <div className="testdrive-message testdrive-error">
+                    {bookingError}
+                  </div>
+                )}
+                {bookingMsg && (
+                  <div className="testdrive-message testdrive-success">
+                    {bookingMsg}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Contact box */}
           <div className="details-contact">
             <div className="details-contact-title">Contact</div>
             <div className="details-contact-line">
@@ -251,6 +390,23 @@ export default function CarDetails() {
             {car.price ? fmtMoney(car.price) : "Price on request"}
           </div>
 
+          {/* Buy Now */}
+          <div style={{ margin: "12px 0 16px" }}>
+            <button
+              type="button"
+              className="primary-btn"
+              onClick={handleBuyNow}
+              disabled={!isAvailable}
+              style={{ width: "100%", maxWidth: 300 }}
+            >
+              {isSold
+                ? "Sold"
+                : car.active === false
+                ? "Unavailable"
+                : "Buy Now"}
+            </button>
+          </div>
+
           <ul className="details-specs">
             {car.make && (
               <li>
@@ -278,11 +434,23 @@ export default function CarDetails() {
                 </strong>
               </li>
             )}
-            {car.active !== undefined && (
+            {(car.active !== undefined || car.sold !== undefined) && (
               <li>
                 <span>Status</span>
-                <strong className={car.active ? "ok" : "muted"}>
-                  {car.active ? "Available" : "Unavailable"}
+                <strong
+                  className={
+                    isSold
+                      ? "muted"
+                      : isAvailable
+                      ? "ok"
+                      : "muted"
+                  }
+                >
+                  {isSold
+                    ? "Sold"
+                    : isAvailable
+                    ? "Available"
+                    : "Unavailable"}
                 </strong>
               </li>
             )}

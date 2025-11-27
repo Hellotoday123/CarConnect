@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { auth, db } from "../services/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
+import TestDriveNotificationBell from "./TestDriveNotificationBell.jsx";
 
 export default function Navbar() {
   const [role, setRole] = useState(null); // "buyer" | "seller" | null
@@ -21,7 +22,7 @@ export default function Navbar() {
     return () => unsub();
   }, []);
 
-  // Close dropdown on outside click
+  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClick = (e) => {
       if (open && menuRef.current && !menuRef.current.contains(e.target)) {
@@ -32,7 +33,7 @@ export default function Navbar() {
     return () => window.removeEventListener("click", handleClick);
   }, [open]);
 
-  // Close dropdown on route change
+  // Close dropdown when route changes
   useEffect(() => {
     setOpen(false);
   }, [loc.pathname]);
@@ -50,16 +51,26 @@ export default function Navbar() {
 
   return (
     <nav className="nav">
+      {/* Brand */}
       <div className="brand" onClick={goHome} style={{ cursor: "pointer" }}>
         CarConnect
       </div>
 
       <div className="links">
         {/* Home link per role */}
-        {role === "buyer" && <Link to="/buyer" className="nav-link">Home</Link>}
-        {role === "seller" && <Link to="/seller" className="nav-link">Home</Link>}
+        {role === "buyer" && (
+          <Link to="/buyer" className="nav-link">
+            Home
+          </Link>
+        )}
 
-        {/* 👇 Wishlist visible for both buyers and sellers */}
+        {role === "seller" && (
+          <Link to="/seller" className="nav-link">
+            Home
+          </Link>
+        )}
+
+        {/* Wishlist visible for ANY logged-in user */}
         {role && (
           <Link to="/wishlist" className="nav-link">
             Wishlist
@@ -67,10 +78,17 @@ export default function Navbar() {
         )}
 
         {/* Account link for all logged-in users */}
-        {role && <Link to="/account" className="nav-link">Account</Link>}
+        {role && (
+          <Link to="/account" className="nav-link">
+            Account
+          </Link>
+        )}
 
-        {/* Seller-only dropdown */}
-        {role === "seller" && (
+        {/* SELLER: notification bell stays visible */}
+        {role === "seller" && <TestDriveNotificationBell />}
+
+        {/* DROPDOWN – different content for buyer vs seller */}
+        {role && (
           <div className="nav-dropdown" ref={menuRef}>
             <button
               className="nav-icon"
@@ -86,32 +104,62 @@ export default function Navbar() {
 
             {open && (
               <div className="nav-menu" role="menu">
-                <button
-                  className="nav-menu-item"
-                  onClick={() => nav("/seller/inventory")}
-                >
-                  My Cars
-                </button>
+                {/* Buyer-only items */}
+                {role === "buyer" && (
+                  <>
+                    <button
+                      className="nav-menu-item"
+                      onClick={() => nav("/my-test-drives")}
+                    >
+                      My Test Drives
+                    </button>
+                    <button
+                      className="nav-menu-item"
+                      onClick={() => nav("/my-purchases")}
+                    >
+                      My Purchases
+                    </button>
+                  </>
+                )}
 
-                <button
-                  className="nav-menu-item"
-                  onClick={() => nav("/sales")}
-                >
-                  Sales
-                </button>
+                {/* Seller-only items */}
+                {role === "seller" && (
+                  <>
+                    <button
+                      className="nav-menu-item"
+                      onClick={() => nav("/seller/inventory")}
+                    >
+                      My Cars
+                    </button>
 
-                <button
-                  className="nav-menu-item"
-                  onClick={() => nav("/requests")}
-                >
-                  Requests
-                </button>
+                    <button
+                      className="nav-menu-item"
+                      onClick={() => nav("/seller/sales")}
+                    >
+                      Sales
+                    </button>
+
+                    <button
+                      className="nav-menu-item"
+                      onClick={() => nav("/seller/test-drives")}
+                    >
+                      Test Drive Requests
+                    </button>
+
+                    <button
+                      className="nav-menu-item"
+                      onClick={() => nav("/my-purchases")}
+                    >
+                      My Purchases
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
         )}
 
-        {/* Auth buttons */}
+        {/* Login / Logout */}
         {role ? (
           <button className="nav-link" onClick={logout}>
             Logout
